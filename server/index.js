@@ -72,14 +72,35 @@ prestamoSchema.virtual('id').get(function () {
 const Prestamo = mongoose.model('Prestamo', prestamoSchema)
 
 // ============ CONEXIÓN A MONGODB ============
-console.log('⏳ Intentando conectar a MongoDB...')
-if (MONGODB_URI) {
-    mongoose.connect(MONGODB_URI)
-        .then(() => console.log('✅ Conectado a MongoDB Atlas'))
-        .catch(err => console.error('❌ Error de conexión a MongoDB:', err))
-} else {
-    console.error('❌ ERROR: MONGODB_URI no está definida. Revisa las variables de entorno.')
+const connectDB = async () => {
+    console.log('⏳ Intentando conectar a MongoDB Atlas...')
+    if (!MONGODB_URI) {
+        console.error('❌ ERROR: MONGODB_URI no está definida. Verifica las variables de entorno en Render.')
+        return
+    }
+
+    try {
+        await mongoose.connect(MONGODB_URI, {
+            serverSelectionTimeoutMS: 5000, // Tiempo de espera de 5 segundos
+            connectTimeoutMS: 10000,
+        })
+        console.log('✅ Conectado exitosamente a MongoDB Atlas')
+    } catch (err) {
+        console.error('❌ ERROR FATAL de conexión a MongoDB:', err.message)
+        console.error('Detalles:', err)
+    }
 }
+
+connectDB()
+
+// Monitorear eventos de conexión
+mongoose.connection.on('error', err => {
+    console.error('❌ Error persistente en MongoDB:', err)
+})
+
+mongoose.connection.on('disconnected', () => {
+    console.warn('⚠️ MongoDB desconectado. Intentando reconectar...')
+})
 
 // ============ API ENDPOINTS ============
 
