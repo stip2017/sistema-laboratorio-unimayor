@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react'
-
-const API_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:3001/api'
-    : '/api'
+import { dbService } from '../services/dbService'
 
 export default function Prestamos() {
     const [prestamos, setPrestamos] = useState([])
@@ -53,12 +50,10 @@ export default function Prestamos() {
 
     const fetchPrestamos = async () => {
         try {
-            const response = await fetch(`${API_URL}/prestamos`)
-            const data = await response.json()
+            const data = await dbService.getPrestamos()
             if (Array.isArray(data)) {
                 setPrestamos(data)
             } else {
-                console.error('Data is not an array:', data)
                 setPrestamos([])
             }
             setLoading(false)
@@ -124,17 +119,7 @@ export default function Prestamos() {
         setSubmitting(true)
 
         try {
-            const response = await fetch(`${API_URL}/prestamos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSubmit)
-            })
-
-            if (!response.ok) {
-                throw new Error('Error al registrar el préstamo')
-            }
-
-            const newPrestamo = await response.json()
+            const newPrestamo = await dbService.addPrestamo(dataToSubmit)
             setPrestamos([newPrestamo, ...prestamos])
             setSuccess(true)
             setFormData({
@@ -160,9 +145,7 @@ export default function Prestamos() {
         }
 
         try {
-            await fetch(`${API_URL}/prestamos/${id}`, {
-                method: 'DELETE'
-            })
+            await dbService.deletePrestamo(id)
             setPrestamos(prestamos.filter(p => p.id !== id))
         } catch (error) {
             console.error('Error deleting prestamo:', error)

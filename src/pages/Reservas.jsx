@@ -2,10 +2,7 @@ import { useState, useEffect } from 'react'
 import Calendar from '../components/Calendar'
 import ReservationForm from '../components/ReservationForm'
 import ReservationTable from '../components/ReservationTable'
-
-const API_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:3001/api'
-    : '/api'
+import { dbService } from '../services/dbService'
 
 export default function Reservas() {
     const [reservations, setReservations] = useState([])
@@ -18,12 +15,10 @@ export default function Reservas() {
 
     const fetchReservations = async () => {
         try {
-            const response = await fetch(`${API_URL}/reservations`)
-            const data = await response.json()
+            const data = await dbService.getReservations()
             if (Array.isArray(data)) {
                 setReservations(data)
             } else {
-                console.error('Data is not an array:', data)
                 setReservations([])
             }
             setLoading(false)
@@ -36,18 +31,7 @@ export default function Reservas() {
 
     const handleAddReservation = async (reservationData) => {
         try {
-            const response = await fetch(`${API_URL}/reservations`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(reservationData)
-            })
-
-            if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.message || 'Error al crear la reserva')
-            }
-
-            const newReservation = await response.json()
+            const newReservation = await dbService.addReservation(reservationData)
             setReservations([...reservations, newReservation])
             return { success: true }
         } catch (error) {
@@ -61,9 +45,7 @@ export default function Reservas() {
         }
 
         try {
-            await fetch(`${API_URL}/reservations/${id}`, {
-                method: 'DELETE'
-            })
+            await dbService.deleteReservation(id)
             setReservations(reservations.filter(r => r.id !== id))
         } catch (error) {
             console.error('Error deleting reservation:', error)
