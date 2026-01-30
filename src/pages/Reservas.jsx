@@ -20,7 +20,12 @@ export default function Reservas() {
         try {
             const response = await fetch(`${API_URL}/reservations`)
             const data = await response.json()
-            setReservations(data)
+            if (Array.isArray(data)) {
+                setReservations(data)
+            } else {
+                console.error('Data is not an array:', data)
+                setReservations([])
+            }
             setLoading(false)
         } catch (error) {
             console.error('Error fetching reservations:', error)

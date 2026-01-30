@@ -55,7 +55,12 @@ export default function Prestamos() {
         try {
             const response = await fetch(`${API_URL}/prestamos`)
             const data = await response.json()
-            setPrestamos(data)
+            if (Array.isArray(data)) {
+                setPrestamos(data)
+            } else {
+                console.error('Data is not an array:', data)
+                setPrestamos([])
+            }
             setLoading(false)
         } catch (error) {
             console.error('Error fetching prestamos:', error)
