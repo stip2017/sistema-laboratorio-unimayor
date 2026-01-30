@@ -12,7 +12,7 @@ dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const DIST_PATH = path.join(__dirname, '../dist')
+const DIST_PATH = path.resolve(__dirname, '../dist')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -24,7 +24,10 @@ app.use(bodyParser.json())
 
 // Servir archivos estáticos del Frontend (Vite build)
 if (fs.existsSync(DIST_PATH)) {
+    console.log(`📂 Sirviendo archivos estáticos desde: ${DIST_PATH}`)
     app.use(express.static(DIST_PATH))
+} else {
+    console.warn(`⚠️ Carpeta dist no encontrada en: ${DIST_PATH}`)
 }
 
 // ============ MODELOS DE MONGODB ============
@@ -37,13 +40,15 @@ const reservationSchema = new mongoose.Schema({
     horaInicio: { type: String, required: true },
     horaFin: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
+}, {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 })
 
 // Mapear _id a id para compatibilidad con el frontend
 reservationSchema.virtual('id').get(function () {
     return this._id.toHexString()
 })
-reservationSchema.set('toJSON', { virtuals: true })
 
 const Reservation = mongoose.model('Reservation', reservationSchema)
 
@@ -55,28 +60,32 @@ const prestamoSchema = new mongoose.Schema({
     fecha: { type: String, required: true },
     hora: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
+}, {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 })
 
 prestamoSchema.virtual('id').get(function () {
     return this._id.toHexString()
 })
-prestamoSchema.set('toJSON', { virtuals: true })
 
 const Prestamo = mongoose.model('Prestamo', prestamoSchema)
 
 // ============ CONEXIÓN A MONGODB ============
+console.log('⏳ Intentando conectar a MongoDB...')
 if (MONGODB_URI) {
     mongoose.connect(MONGODB_URI)
         .then(() => console.log('✅ Conectado a MongoDB Atlas'))
         .catch(err => console.error('❌ Error de conexión a MongoDB:', err))
 } else {
-    console.warn('⚠️ ADVERTENCIA: MONGODB_URI no está definida en el archivo .env')
+    console.error('❌ ERROR: MONGODB_URI no está definida. Revisa las variables de entorno.')
 }
 
 // ============ API ENDPOINTS ============
 
 // Status check
 app.get('/api/status', (req, res) => {
+    console.log('📡 Status check solicitado')
     res.json({
         status: 'online',
         database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
@@ -87,15 +96,18 @@ app.get('/api/status', (req, res) => {
 // Reservations
 app.get('/api/reservations', async (req, res) => {
     try {
+        console.log('📥 Obteniendo reservas...')
         const reservations = await Reservation.find().sort({ fecha: 1, horaInicio: 1 })
         res.json(reservations)
     } catch (err) {
-        res.status(500).json({ message: 'Error al obtener reservas' })
+        console.error('❌ Error en GET /api/reservations:', err)
+        res.status(500).json({ message: 'Error al obtener reservas', error: err.message })
     }
 })
 
 app.post('/api/reservations', async (req, res) => {
     const { nombreCompleto, programaAcademico, fecha, horaInicio, horaFin } = req.body
+    console.log(`📤 Creando reserva para: ${nombreCompleto}`)
 
     if (!nombreCompleto || !programaAcademico || !fecha || !horaInicio || !horaFin) {
         return res.status(400).json({ message: 'Todos los campos son obligatorios' })
@@ -117,6 +129,7 @@ app.post('/api/reservations', async (req, res) => {
         })
 
         if (overlap) {
+            console.warn('⚠️ Conflicto de horario detectado')
             return res.status(409).json({ message: 'Conflicto de horario detectado.' })
         }
 
@@ -129,20 +142,24 @@ app.post('/api/reservations', async (req, res) => {
         })
 
         await newReservation.save()
+        console.log('✅ Reserva guardada con éxito')
         res.status(201).json(newReservation)
     } catch (err) {
-        res.status(500).json({ message: 'Error al crear reserva' })
+        console.error('❌ Error en POST /api/reservations:', err)
+        res.status(500).json({ message: 'Error al crear reserva', error: err.message })
     }
 })
 
 app.delete('/api/reservations/:id', async (req, res) => {
     try {
+        console.log(`🗑️ Eliminando reserva: ${req.params.id}`)
         const result = await Reservation.findByIdAndDelete(req.params.id)
         if (result) {
             return res.json({ message: 'Reserva eliminada' })
         }
         res.status(404).json({ message: 'No encontrada' })
     } catch (err) {
+        console.error('❌ Error en DELETE /api/reservations:', err)
         res.status(500).json({ message: 'Error al eliminar reserva' })
     }
 })
@@ -150,45 +167,53 @@ app.delete('/api/reservations/:id', async (req, res) => {
 // Préstamos
 app.get('/api/prestamos', async (req, res) => {
     try {
+        console.log('📥 Obteniendo préstamos...')
         const prestamos = await Prestamo.find().sort({ createdAt: -1 })
         res.json(prestamos)
     } catch (err) {
-        res.status(500).json({ message: 'Error al obtener préstamos' })
+        console.error('❌ Error en GET /api/prestamos:', err)
+        res.status(500).json({ message: 'Error al obtener préstamos', error: err.message })
     }
 })
 
 app.post('/api/prestamos', async (req, res) => {
     try {
+        console.log('📤 Registrando nuevo préstamo')
         const newPrestamo = new Prestamo(req.body)
         await newPrestamo.save()
         res.status(201).json(newPrestamo)
     } catch (err) {
+        console.error('❌ Error en POST /api/prestamos:', err)
         res.status(500).json({ message: 'Error al registrar préstamo' })
     }
 })
 
 app.delete('/api/prestamos/:id', async (req, res) => {
     try {
+        console.log(`🗑️ Eliminando préstamo: ${req.params.id}`)
         const result = await Prestamo.findByIdAndDelete(req.params.id)
         if (result) {
             return res.json({ message: 'Préstamo eliminado' })
         }
         res.status(404).json({ message: 'No encontrado' })
     } catch (err) {
+        console.error('❌ Error en DELETE /api/prestamos:', err)
         res.status(500).json({ message: 'Error al eliminar préstamo' })
     }
 })
 
 // Manejo de rutas del Frontend (SPA)
 app.get('*', (req, res) => {
-    if (fs.existsSync(path.join(DIST_PATH, 'index.html'))) {
-        res.sendFile(path.join(DIST_PATH, 'index.html'))
+    const indexPath = path.join(DIST_PATH, 'index.html')
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath)
     } else {
-        res.status(404).send('La aplicación está en mantenimiento (Build folder not found). Por favor ejecuta "npm run build".')
+        res.status(404).send('La aplicación está en mantenimiento. Por favor espera a que termine el build en Render.')
     }
 })
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor unificado corriendo en puerto ${PORT}`)
 })
+
 
