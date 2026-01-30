@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function ReservationForm({ onSubmit, selectedDate, setSelectedDate }) {
     const [formData, setFormData] = useState({
@@ -11,6 +11,12 @@ export default function ReservationForm({ onSubmit, selectedDate, setSelectedDat
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
     const [submitting, setSubmitting] = useState(false)
+
+    // Sincronizar fecha cuando cambia en el calendario
+    useEffect(() => {
+        const dateStr = selectedDate.toISOString().split('T')[0]
+        setFormData(prev => ({ ...prev, fecha: dateStr }))
+    }, [selectedDate])
 
     const programas = [
         'Ingeniería de Sistemas',
