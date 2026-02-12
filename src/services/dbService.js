@@ -7,7 +7,8 @@ import {
     deleteDoc,
     doc,
     query,
-    orderBy
+    orderBy,
+    where
 } from "firebase/firestore";
 
 // Configuración de Firebase (proporcionada por el usuario)
@@ -41,9 +42,17 @@ export const dbService = {
     // --- RESERVAS ---
     getReservations: async () => {
         if (isFirebaseMode) {
-            const q = query(collection(db, "reservations"), orderBy("fecha"), orderBy("horaInicio"));
-            const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            try {
+                // Simplificamos a un solo orderBy para evitar requerir índices compuestos manuales
+                const q = query(collection(db, "reservations"), orderBy("fecha", "asc"));
+                const querySnapshot = await getDocs(q);
+                const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("📥 Datos recuperados de Firebase:", data.length);
+                return data;
+            } catch (error) {
+                console.error("❌ Error al recuperar de Firebase:", error);
+                return [];
+            }
         } else {
             const response = await fetch(`${API_URL}/reservations`);
             return await response.json();
@@ -53,6 +62,30 @@ export const dbService = {
     addReservation: async (data) => {
         if (isFirebaseMode) {
             try {
+                // 1. Verificar solapamiento de horario en Firebase
+                const q = query(collection(db, "reservations"), where("fecha", "==", data.fecha));
+                const querySnapshot = await getDocs(q);
+                const existingReservations = querySnapshot.docs.map(doc => doc.data());
+
+                const hasOverlap = existingReservations.some(res => {
+                    const hInicio = data.horaInicio;
+                    const hFin = data.horaFin;
+                    const rInicio = res.horaInicio;
+                    const rFin = res.horaFin;
+
+                    // Lógica de solapamiento idéntica a la del backend
+                    return (
+                        (hInicio < rFin && hInicio >= rInicio) ||
+                        (hFin > rInicio && hFin <= rFin) ||
+                        (hInicio <= rInicio && hFin >= rFin)
+                    );
+                });
+
+                if (hasOverlap) {
+                    throw new Error('Conflicto de horario detectado. Ya existe una reserva en este rango.');
+                }
+
+                // 2. Si no hay solapamiento, guardar
                 const docRef = await addDoc(collection(db, "reservations"), {
                     ...data,
                     createdAt: new Date()

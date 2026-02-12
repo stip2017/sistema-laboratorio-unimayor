@@ -68,8 +68,72 @@ export default function ReservationTable({ reservations, onDelete, loading }) {
         return activeTab === 'upcoming' ? dateA - dateB : dateB - dateA
     })
 
+    // --- Lógica de Agrupación para Reservas Semestrales ---
+    const getGroupedReservations = (reservs) => {
+        const grouped = [];
+        const processedIndices = new Set();
+
+        // Ordenar por fecha para encontrar secuencias
+        const sorted = [...reservs].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+        for (let i = 0; i < sorted.length; i++) {
+            if (processedIndices.has(i)) continue;
+
+            const current = sorted[i];
+            let sequence = [current];
+            processedIndices.add(i);
+
+            // Buscar semanas siguientes (mismo docente, programa, horas y +7 días)
+            let lastDate = new Date(current.fecha + 'T12:00:00');
+
+            for (let j = i + 1; j < sorted.length; j++) {
+                if (processedIndices.has(j)) continue;
+
+                const target = sorted[j];
+                if (
+                    target.nombreCompleto === current.nombreCompleto &&
+                    target.programaAcademico === current.programaAcademico &&
+                    target.horaInicio === current.horaInicio &&
+                    target.horaFin === current.horaFin
+                ) {
+                    const targetDate = new Date(target.fecha + 'T12:00:00');
+                    const diffDays = Math.round((targetDate - lastDate) / (1000 * 60 * 60 * 24));
+
+                    if (diffDays === 7) {
+                        sequence.push(target);
+                        processedIndices.add(j);
+                        lastDate = targetDate;
+                    }
+                }
+            }
+
+            if (sequence.length > 2) { // Agrupar solo si son 3 o más semanas
+                grouped.push({
+                    ...current,
+                    isRange: true,
+                    fechaInicio: current.fecha,
+                    fechaFin: sequence[sequence.length - 1].fecha,
+                    allIds: sequence.map(s => s.id)
+                });
+            } else {
+                // Si son solo 1 o 2, las dejamos individuales para no confundir
+                sequence.forEach((s, idx) => {
+                    if (idx > 0) grouped.push(s); // La primera ya se agregó por defecto si no entró en el loop de i
+                });
+                if (sequence.length === 1) grouped.push(current);
+                else if (sequence.length === 2) {
+                    // Ya agregamos la 2da arriba, la 1ra se agrega aquí
+                    grouped.push(current);
+                }
+            }
+        }
+        return grouped;
+    };
+
+    const displayReservations = getGroupedReservations(sortedReservations);
+
     return (
-        <div className="card">
+        <div className="card-full-height">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
                     <h2 className="text-2xl mb-1">Gestión de Reservas</h2>
@@ -123,62 +187,72 @@ export default function ReservationTable({ reservations, onDelete, loading }) {
                 </button>
             </div>
 
-            {loading ? (
-                <div className="text-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-institutional-primary"></div>
-                    <p className="mt-4 text-gray-600">Cargando datos...</p>
-                </div>
-            ) : sortedReservations.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                    <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-gray-500 text-lg">No hay registros para mostrar</p>
-                </div>
-            ) : (
-                <div className="table-container">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Docente</th>
-                                <th>Programa</th>
-                                <th>Fecha</th>
-                                <th>Horario</th>
-                                <th className="text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedReservations.map((reservation) => (
-                                <tr key={reservation.id}>
-                                    <td className="font-medium text-institutional-dark">
-                                        {reservation.nombreCompleto}
-                                    </td>
-                                    <td className="text-gray-600">{reservation.programaAcademico}</td>
-                                    <td>
-                                        <span className="font-semibold">{formatDate(reservation.fecha)}</span>
-                                    </td>
-                                    <td>
-                                        <span className="bg-institutional-light text-institutional-dark px-2 py-1 rounded text-xs font-bold">
-                                            {formatTime(reservation.horaInicio)} - {formatTime(reservation.horaFin)}
-                                        </span>
-                                    </td>
-                                    <td className="text-center">
-                                        <button
-                                            onClick={() => onDelete(reservation.id)}
-                                            className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-all"
-                                            title="Eliminar reserva"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </td>
+            <div className="flex-1 overflow-hidden flex flex-col">
+                {loading ? (
+                    <div className="text-center py-12">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-institutional-primary"></div>
+                        <p className="mt-4 text-gray-600">Cargando datos...</p>
+                    </div>
+                ) : displayReservations.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                        <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-gray-500 text-lg">No hay registros para mostrar</p>
+                    </div>
+                ) : (
+                    <div className="table-container max-h-[450px] overflow-y-auto">
+                        <table className="table">
+                            <thead className="sticky top-0 z-10">
+                                <tr>
+                                    <th>Docente</th>
+                                    <th>Programa</th>
+                                    <th>Fecha</th>
+                                    <th>Horario</th>
+                                    <th className="text-center">Acciones</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                            </thead>
+                            <tbody>
+                                {displayReservations.map((reservation, index) => (
+                                    <tr key={reservation.id || index}>
+                                        <td className="font-medium text-institutional-dark">
+                                            {reservation.nombreCompleto}
+                                        </td>
+                                        <td className="text-gray-600">{reservation.programaAcademico}</td>
+                                        <td>
+                                            {reservation.isRange ? (
+                                                <div className="flex flex-col text-xs font-bold text-amber-700 bg-amber-50 p-1 rounded border border-amber-100">
+                                                    <span>{formatDate(reservation.fechaInicio)}</span>
+                                                    <span className="text-[10px] text-center text-amber-500 my-0.5">▼ SEMESTRAL ▼</span>
+                                                    <span>{formatDate(reservation.fechaFin)}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="font-semibold">{formatDate(reservation.fecha)}</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <span className="bg-institutional-light text-institutional-dark px-2 py-1 rounded text-xs font-bold whitespace-nowrap">
+                                                {formatTime(reservation.horaInicio)} - {formatTime(reservation.horaFin)}
+                                            </span>
+                                        </td>
+                                        <td className="text-center">
+                                            <button
+                                                onClick={() => onDelete(reservation.allIds || reservation.id)}
+                                                className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-all"
+                                                title={reservation.isRange ? "Eliminar grupo semestral" : "Eliminar reserva"}
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

@@ -6,7 +6,7 @@
   * {
     @apply box-border;
   }
-  
+
   body {
     @apply m-0 font-sans antialiased bg-gray-50 text-gray-900;
   }
@@ -25,41 +25,36 @@
 }
 
 @layer components {
+
   /* Card Component */
   .card {
     @apply bg-white rounded-lg shadow-md p-6 transition-all duration-300 hover:shadow-xl;
   }
 
+  .card-full-height {
+    @apply bg-white rounded-lg shadow-md p-6 transition-all duration-300 hover:shadow-xl h-full flex flex-col;
+  }
+
   /* Button Styles */
   .btn-primary {
-    @apply bg-institutional-primary hover:bg-institutional-dark text-white font-semibold py-3 px-6 rounded-lg 
-           transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg 
-           focus:outline-none focus:ring-2 focus:ring-institutional-secondary focus:ring-offset-2;
+    @apply bg-institutional-primary hover:bg-institutional-dark text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-institutional-secondary focus:ring-offset-2;
   }
 
   .btn-secondary {
-    @apply bg-institutional-secondary hover:bg-institutional-primary text-white font-semibold py-3 px-6 rounded-lg 
-           transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg 
-           focus:outline-none focus:ring-2 focus:ring-institutional-primary focus:ring-offset-2;
+    @apply bg-institutional-secondary hover:bg-institutional-primary text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-institutional-primary focus:ring-offset-2;
   }
 
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg 
-           transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg 
-           focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+    @apply bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
   }
 
   .btn-outline {
-    @apply border-2 border-institutional-primary text-institutional-primary hover:bg-institutional-primary 
-           hover:text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 
-           focus:outline-none focus:ring-2 focus:ring-institutional-secondary focus:ring-offset-2;
+    @apply border-2 border-institutional-primary text-institutional-primary hover:bg-institutional-primary hover:text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-institutional-secondary focus:ring-offset-2;
   }
 
   /* Form Inputs */
   .form-input {
-    @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-institutional-secondary 
-           focus:ring-2 focus:ring-institutional-secondary focus:ring-opacity-50 transition-all duration-200
-           text-gray-900 placeholder-gray-400;
+    @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-institutional-secondary focus:ring-2 focus:ring-institutional-secondary focus:ring-opacity-50 transition-all duration-200 text-gray-900 placeholder-gray-400;
   }
 
   .form-label {
@@ -93,8 +88,7 @@
 
   /* Header Navigation */
   .nav-link {
-    @apply text-white hover:text-institutional-accent font-medium px-4 py-2 rounded-md 
-           transition-all duration-300 hover:bg-white hover:bg-opacity-10;
+    @apply text-white hover:text-institutional-accent font-medium px-4 py-2 rounded-md transition-all duration-300 hover:bg-white hover:bg-opacity-10;
   }
 
   .nav-link.active {
@@ -108,7 +102,7 @@
   }
 
   .text-shadow {
-    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .animate-fade-in {
@@ -120,6 +114,7 @@
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);

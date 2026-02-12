@@ -94,7 +94,7 @@ export default function Calendar({ reservations, selectedDate, setSelectedDate }
     }
 
     return (
-        <div className="card">
+        <div className="card-full-height">
             <div className="mb-4">
                 <div className="flex items-center justify-between mb-4">
                     <button

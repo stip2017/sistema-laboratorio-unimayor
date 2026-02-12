@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Calendar from '../components/Calendar'
 import ReservationForm from '../components/ReservationForm'
+import SemesterReservationForm from '../components/SemesterReservationForm'
 import ReservationTable from '../components/ReservationTable'
 import { dbService } from '../services/dbService'
 
@@ -39,17 +40,74 @@ export default function Reservas() {
         }
     }
 
-    const handleDeleteReservation = async (id) => {
+    const handleDeleteReservation = async (idOrIds) => {
         if (!confirm('¿Estás seguro de eliminar esta reserva?')) {
             return
         }
 
         try {
-            await dbService.deleteReservation(id)
-            setReservations(reservations.filter(r => r.id !== id))
+            if (Array.isArray(idOrIds)) {
+                // Eliminar múltiples (Semestral)
+                await Promise.all(idOrIds.map(id => dbService.deleteReservation(id)));
+                setReservations(reservations.filter(r => !idOrIds.includes(r.id)));
+            } else {
+                // Eliminar una sola
+                await dbService.deleteReservation(idOrIds);
+                setReservations(reservations.filter(r => r.id !== idOrIds));
+            }
         } catch (error) {
             console.error('Error deleting reservation:', error)
-            alert('Error al eliminar la reserva')
+            alert('Error al eliminar la reserva/s')
+        }
+    }
+
+    const handleAddSemesterReservation = async (semesterData) => {
+        try {
+            const startDate = new Date(semesterData.fecha)
+            const endDate = new Date(semesterData.fechaFinalizacion)
+            const createdReservations = []
+            const errors = []
+
+            // Generate all weekly reservations
+            let currentDate = new Date(startDate)
+
+            while (currentDate <= endDate) {
+                const reservationData = {
+                    nombreCompleto: semesterData.nombreCompleto,
+                    programaAcademico: semesterData.programaAcademico,
+                    fecha: currentDate.toISOString().split('T')[0],
+                    horaInicio: semesterData.horaInicio,
+                    horaFin: semesterData.horaFin
+                }
+
+                try {
+                    const newReservation = await dbService.addReservation(reservationData)
+                    createdReservations.push(newReservation)
+                } catch (error) {
+                    errors.push({
+                        fecha: reservationData.fecha,
+                        error: error.message
+                    })
+                }
+
+                // Move to next week (same day)
+                currentDate.setDate(currentDate.getDate() + 7)
+            }
+
+            // Update the reservations list with all created reservations
+            if (createdReservations.length > 0) {
+                setReservations([...reservations, ...createdReservations])
+            }
+
+            if (errors.length > 0) {
+                const errorMessage = `Se crearon ${createdReservations.length} reservas. ${errors.length} reservas fallaron:\n` +
+                    errors.map(e => `${e.fecha}: ${e.error}`).join('\n')
+                return { success: true, error: errorMessage }
+            }
+
+            return { success: true }
+        } catch (error) {
+            return { success: false, error: error.message }
         }
     }
 
@@ -63,29 +121,44 @@ export default function Reservas() {
                 </p>
             </div>
 
-            {/* Main Grid */}
+            {/* First Row: Nueva Reserva + Gestión de Reservas */}
             <div className="grid lg:grid-cols-2 gap-8 mb-8">
-                {/* Left Column: Form and Calendar */}
-                <div className="space-y-6">
+                {/* Left: Nueva Reserva */}
+                <div className="flex flex-col">
                     <ReservationForm
                         onSubmit={handleAddReservation}
                         selectedDate={selectedDate}
                         setSelectedDate={setSelectedDate}
                     />
+                </div>
 
-                    <Calendar
+                {/* Right: Gestión de Reservas */}
+                <div className="flex flex-col">
+                    <ReservationTable
                         reservations={reservations}
+                        onDelete={handleDeleteReservation}
+                        loading={loading}
+                    />
+                </div>
+            </div>
+
+            {/* Second Row: Nueva Reserva Semestral + Calendar */}
+            <div className="grid lg:grid-cols-2 gap-8 mb-8">
+                {/* Left: Nueva Reserva Semestral */}
+                <div className="flex flex-col">
+                    <SemesterReservationForm
+                        onSubmit={handleAddSemesterReservation}
                         selectedDate={selectedDate}
                         setSelectedDate={setSelectedDate}
                     />
                 </div>
 
-                {/* Right Column: Reservations Table */}
-                <div>
-                    <ReservationTable
+                {/* Right: Calendar */}
+                <div className="flex flex-col">
+                    <Calendar
                         reservations={reservations}
-                        onDelete={handleDeleteReservation}
-                        loading={loading}
+                        selectedDate={selectedDate}
+                        setSelectedDate={setSelectedDate}
                     />
                 </div>
             </div>

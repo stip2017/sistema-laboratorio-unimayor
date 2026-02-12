@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 
-export default function ReservationForm({ onSubmit, selectedDate, setSelectedDate }) {
+export default function SemesterReservationForm({ onSubmit, selectedDate, setSelectedDate }) {
     const [formData, setFormData] = useState({
         nombreCompleto: '',
         programaAcademico: '',
         fecha: selectedDate.toISOString().split('T')[0],
         horaInicio: '',
-        horaFin: ''
+        horaFin: '',
+        fechaFinalizacion: ''
     })
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
@@ -17,16 +18,6 @@ export default function ReservationForm({ onSubmit, selectedDate, setSelectedDat
         const dateStr = selectedDate.toISOString().split('T')[0]
         setFormData(prev => ({ ...prev, fecha: dateStr }))
     }, [selectedDate])
-
-    const programas = [
-        'Ingeniería de Sistemas',
-        'Ingeniería Electrónica',
-        'Física',
-        'Matemáticas',
-        'Ingeniería Civil',
-        'Arquitectura',
-        'Otro'
-    ]
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -69,6 +60,29 @@ export default function ReservationForm({ onSubmit, selectedDate, setSelectedDat
             return
         }
 
+        // Validate end date is after start date
+        const startDate = new Date(formData.fecha)
+        const endDate = new Date(formData.fechaFinalizacion)
+
+        if (!formData.fechaFinalizacion) {
+            setError('La fecha de finalización es obligatoria')
+            return
+        }
+
+        if (endDate <= startDate) {
+            setError('La fecha de finalización debe ser posterior a la fecha de inicio')
+            return
+        }
+
+        // Calculate the number of weeks
+        const diffTime = Math.abs(endDate - startDate)
+        const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
+
+        if (diffWeeks > 26) {
+            setError('La reserva semestral no puede exceder 26 semanas (6 meses)')
+            return
+        }
+
         setSubmitting(true)
         const result = await onSubmit(formData)
         setSubmitting(false)
@@ -80,31 +94,32 @@ export default function ReservationForm({ onSubmit, selectedDate, setSelectedDat
                 programaAcademico: '',
                 fecha: selectedDate.toISOString().split('T')[0],
                 horaInicio: '',
-                horaFin: ''
+                horaFin: '',
+                fechaFinalizacion: ''
             })
             setTimeout(() => setSuccess(false), 5000)
         } else {
-            setError(result.error || 'Error al crear la reserva')
+            setError(result.error || 'Error al crear la reserva semestral')
         }
     }
 
     return (
         <div className="card-full-height">
             <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-institutional-primary rounded-full flex items-center justify-center text-white">
+                <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-institutional-dark">Nueva Reserva</h2>
+                <h2 className="text-2xl font-bold text-institutional-dark">Nueva Reserva Semestral</h2>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label htmlFor="nombreCompleto" className="form-label">Docente Responsable *</label>
+                    <label htmlFor="semestral-nombreCompleto" className="form-label">Docente Responsable *</label>
                     <input
                         type="text"
-                        id="nombreCompleto"
+                        id="semestral-nombreCompleto"
                         name="nombreCompleto"
                         value={formData.nombreCompleto}
                         onChange={handleChange}
@@ -115,10 +130,10 @@ export default function ReservationForm({ onSubmit, selectedDate, setSelectedDat
                 </div>
 
                 <div>
-                    <label htmlFor="programaAcademico" className="form-label">Programa Académico *</label>
+                    <label htmlFor="semestral-programaAcademico" className="form-label">Programa Académico *</label>
                     <input
                         type="text"
-                        id="programaAcademico"
+                        id="semestral-programaAcademico"
                         name="programaAcademico"
                         value={formData.programaAcademico}
                         onChange={handleChange}
@@ -130,10 +145,10 @@ export default function ReservationForm({ onSubmit, selectedDate, setSelectedDat
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="fecha" className="form-label">Fecha de Uso *</label>
+                        <label htmlFor="semestral-fecha" className="form-label">Fecha de Inicio *</label>
                         <input
                             type="date"
-                            id="fecha"
+                            id="semestral-fecha"
                             name="fecha"
                             value={formData.fecha}
                             onChange={handleChange}
@@ -143,31 +158,45 @@ export default function ReservationForm({ onSubmit, selectedDate, setSelectedDat
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <label htmlFor="horaInicio" className="form-label">Inicio *</label>
-                            <input
-                                type="time"
-                                id="horaInicio"
-                                name="horaInicio"
-                                value={formData.horaInicio}
-                                onChange={handleChange}
-                                className="form-input"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="horaFin" className="form-label">Fin *</label>
-                            <input
-                                type="time"
-                                id="horaFin"
-                                name="horaFin"
-                                value={formData.horaFin}
-                                onChange={handleChange}
-                                className="form-input"
-                                required
-                            />
-                        </div>
+                    <div>
+                        <label htmlFor="semestral-fechaFinalizacion" className="form-label">Fecha de Finalización *</label>
+                        <input
+                            type="date"
+                            id="semestral-fechaFinalizacion"
+                            name="fechaFinalizacion"
+                            value={formData.fechaFinalizacion}
+                            onChange={handleChange}
+                            className="form-input"
+                            min={formData.fecha || new Date().toISOString().split('T')[0]}
+                            required
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label htmlFor="semestral-horaInicio" className="form-label">Inicio *</label>
+                        <input
+                            type="time"
+                            id="semestral-horaInicio"
+                            name="horaInicio"
+                            value={formData.horaInicio}
+                            onChange={handleChange}
+                            className="form-input"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="semestral-horaFin" className="form-label">Fin *</label>
+                        <input
+                            type="time"
+                            id="semestral-horaFin"
+                            name="horaFin"
+                            value={formData.horaFin}
+                            onChange={handleChange}
+                            className="form-input"
+                            required
+                        />
                     </div>
                 </div>
 
@@ -188,22 +217,22 @@ export default function ReservationForm({ onSubmit, selectedDate, setSelectedDat
                             <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
-                            <span>La reserva se ha registrado exitosamente.</span>
+                            <span>Las reservas semanales se han registrado exitosamente.</span>
                         </div>
                     </div>
                 )}
 
                 {/* Note about rules */}
-                <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-800 border border-blue-100 italic">
-                    <strong>Aviso:</strong> Al realizar la reserva, el docente se compromete a cumplir el reglamento del laboratorio y dejar el espacio en óptimas condiciones.
+                <div className="bg-amber-50 p-3 rounded-lg text-xs text-amber-900 border border-amber-200 italic">
+                    <strong>Aviso:</strong> Esta reserva se repetirá automáticamente cada semana en el mismo día y hora hasta la fecha de finalización. El docente se compromete a cumplir el reglamento del laboratorio y dejar el espacio en óptimas condiciones.
                 </div>
 
                 <button
                     type="submit"
                     disabled={submitting}
-                    className="btn-primary w-full py-4 text-lg"
+                    className="btn-primary w-full py-4 text-lg bg-yellow-500 hover:bg-yellow-600"
                 >
-                    {submitting ? 'Procesando...' : 'Confirmar Reserva'}
+                    {submitting ? 'Procesando...' : 'Confirmar Reserva Semestral'}
                 </button>
             </form>
         </div>
